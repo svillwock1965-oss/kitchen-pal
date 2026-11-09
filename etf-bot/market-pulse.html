@@ -1,0 +1,341 @@
+<title>Market Pulse Score</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one column; verdict band on top, factor ledger, then the two stock grids, then settings. */
+:root{
+  --bg:#f3f5f7; --panel:#ffffff; --ink:#15202b; --muted:#5b6b7a; --line:#d9e0e7;
+  --up:#0f8a5f; --up-soft:#d8f1e6; --down:#c2362b; --down-soft:#f8dedb; --flat:#8796a5;
+  --accent:#2a5bd7;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e141b; --panel:#151d26; --ink:#e5ebf1; --muted:#8fa0b1; --line:#26323e;
+  --up:#3ccf91; --up-soft:#13352a; --down:#ff6b5e; --down-soft:#3d1c1a; --flat:#6c7d8e; --accent:#7aa2ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e141b; --panel:#151d26; --ink:#e5ebf1; --muted:#8fa0b1; --line:#26323e;
+  --up:#3ccf91; --up-soft:#13352a; --down:#ff6b5e; --down-soft:#3d1c1a; --flat:#6c7d8e; --accent:#7aa2ff; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+h1{font-family:var(--f-display);font-size:28px;letter-spacing:.02em;margin:0;text-transform:uppercase}
+.status{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.verdict{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.score{font-family:var(--f-display);font-size:88px;line-height:.9;font-variant-numeric:tabular-nums;min-width:2.6ch;text-align:right}
+.grade{display:inline-block;font-family:var(--f-display);font-size:22px;padding:2px 12px;border-radius:6px;margin-bottom:6px;letter-spacing:.04em}
+.lean{font-size:17px;font-weight:600;margin:0 0 10px}
+.scale{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--down) 0%,var(--down-soft) 38%,var(--line) 50%,var(--up-soft) 62%,var(--up) 100%)}
+.scale .mark{position:absolute;top:-5px;width:4px;height:24px;background:var(--ink);border-radius:2px;transform:translateX(-2px);transition:left .4s}
+.ticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-top:4px}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+td,th{padding:8px 6px;border-top:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.08em;border-top:0}
+td.num{font-family:var(--f-mono);text-align:right;white-space:nowrap}
+.bar{position:relative;height:10px;background:var(--bg);border-radius:5px;min-width:90px}
+.bar span{position:absolute;top:0;height:100%;border-radius:5px}
+.bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
+.detail{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px}
+.tile{border-radius:6px;padding:6px 8px;font-family:var(--f-mono);font-size:12px;display:flex;flex-direction:column}
+.tile b{font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.two>*{min-width:0}
+.msg{padding:10px 12px;border-radius:8px;background:var(--down-soft);color:var(--ink);font-size:14px}
+details summary{cursor:pointer;font-weight:600}
+textarea{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:13px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-height:64px}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+button{font:inherit;font-weight:600;padding:8px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer;margin-top:10px}
+button:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.foot{font-size:12px;color:var(--muted)}
+@media (max-width:640px){.verdict{grid-template-columns:1fr}.score{text-align:left;font-size:72px}.two{grid-template-columns:1fr}.hide-sm{display:none}}
+@media (prefers-reduced-motion:reduce){.scale .mark{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Market Pulse</h1>
+    <div class="status" id="status">Connecting to Webull…</div>
+  </header>
+  <div id="msg" class="msg" hidden></div>
+
+  <section class="panel verdict" aria-live="polite">
+    <div class="score" id="score">--</div>
+    <div>
+      <span class="grade" id="grade">–</span>
+      <p class="lean" id="lean">Waiting for market data</p>
+      <div class="scale"><div class="mark" id="mark" style="left:50%"></div></div>
+      <div class="ticks"><span>−100 strong down</span><span>0</span><span>+100 strong up</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>How the score adds up</h2>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Factor</th><th class="hide-sm">Reading</th><th>Pull</th><th style="text-align:right">Points</th></tr></thead>
+      <tbody id="factors"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel"><h2 id="techTitle">Tech leaders</h2><div class="grid" id="techGrid"></div></section>
+    <section class="panel"><h2 id="sectTitle">Sector leaders</h2><div class="grid" id="sectGrid"></div></section>
+  </div>
+
+  <section class="panel">
+    <details>
+      <summary>Edit stock lists</summary>
+      <label for="techList">Tech leaders (comma separated)</label>
+      <textarea id="techList"></textarea>
+      <label for="sectList">Sector leaders (comma separated)</label>
+      <textarea id="sectList"></textarea>
+      <button id="saveLists" type="button">Save lists</button>
+      <span class="detail" id="saveNote"></span>
+    </details>
+  </section>
+
+  <p class="foot">Live quotes from your Webull connection, refreshed every minute while this page is open. VIX is read through VIXY, an ETF that tracks VIX futures. Volume is compared with the 20-day average, adjusted for how much of the trading day has passed. A reading, not advice.</p>
+</div>
+
+<script>
+const DEFAULT_TECH = "AAPL,MSFT,NVDA,GOOGL,AMZN,META,AVGO,TSLA,ORCL,AMD,NFLX,ADBE,CRM,CSCO,QCOM,INTC,TXN,MU,AMAT,PLTR";
+const DEFAULT_SECT = "JPM,BAC,XOM,CVX,UNH,LLY,JNJ,WMT,COST,PG,HD,CAT,GE,NEE,LIN";
+const SERVER = "Webull";
+const $ = id => document.getElementById(id);
+const clamp = (x, a = -1, b = 1) => Math.max(a, Math.min(b, x));
+const pct = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%";
+
+function loadList(key, def) { try { return localStorage.getItem(key) || def; } catch { return def; } }
+function saveList(key, v) { try { localStorage.setItem(key, v); } catch {} }
+function parseList(s) { return [...new Set(s.toUpperCase().split(/[\s,]+/).filter(Boolean))].slice(0, 45); }
+
+let tech = parseList(loadList("mp-tech", DEFAULT_TECH));
+let sect = parseList(loadList("mp-sect", DEFAULT_SECT));
+$("techList").value = tech.join(", ");
+$("sectList").value = sect.join(", ");
+
+const state = { stocks: null, etfs: null, bars: null, err: {} };
+let unsubs = [], mcp = null;
+
+function rows(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.result)) return payload.result;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+function snapMap(payload) {
+  const m = {};
+  for (const r of rows(payload)) if (r && r.symbol) m[r.symbol] = { chg: parseFloat(r.change_ratio), price: parseFloat(r.price), vol: parseFloat(r.volume) };
+  return m;
+}
+function barMap(payload) {
+  const m = {};
+  for (const r of rows(payload)) {
+    if (!r || !r.symbol) continue;
+    const bars = (r.result || []).map(b => ({ t: Date.parse(b.time), c: parseFloat(b.close), v: parseFloat(b.volume) }))
+      .filter(b => isFinite(b.c)).sort((a, b) => a.t - b.t);
+    m[r.symbol] = bars;
+  }
+  return m;
+}
+
+// Fraction of the regular session (9:30-16:00 ET) that has passed; 1 outside it.
+function sessionFraction() {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "numeric", hour12: false, weekday: "short" }).formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t)?.value;
+  const wd = get("weekday"); const mins = (+get("hour") % 24) * 60 + +get("minute");
+  if (wd === "Sat" || wd === "Sun" || mins < 570 || mins >= 960) return { f: 1, open: false };
+  return { f: Math.max((mins - 570) / 390, 0.05), open: true };
+}
+
+function breadth(list, snaps) {
+  const vals = list.map(s => snaps[s]?.chg).filter(isFinite);
+  if (!vals.length) return null;
+  return {
+    n: vals.length,
+    up2: vals.filter(v => v >= 0.02).length, dn2: vals.filter(v => v <= -0.02).length,
+    up: vals.filter(v => v > 0).length, dn: vals.filter(v => v < 0).length,
+    pull: vals.reduce((a, v) => a + clamp(v / 0.02), 0) / vals.length,
+  };
+}
+
+function compute() {
+  const S = state.stocks, E = state.etfs, B = state.bars;
+  const f = [];
+  if (S) {
+    const t = breadth(tech, S), s = breadth(sect, S);
+    if (t) f.push({ name: "Tech breadth", w: 25, pull: t.pull, reading: `${t.dn} down / ${t.up} up of ${t.n}`, detail: `${t.dn2} down 2%+, ${t.up2} up 2%+` });
+    if (s) f.push({ name: "Sector breadth", w: 20, pull: s.pull, reading: `${s.dn} down / ${s.up} up of ${s.n}`, detail: `${s.dn2} down 2%+, ${s.up2} up 2%+` });
+  }
+  if (E) {
+    if (E.QQQ) f.push({ name: "QQQ today", w: 12, pull: clamp(E.QQQ.chg / 0.015), reading: pct(E.QQQ.chg), detail: "full weight at ±1.5%" });
+    if (E.SPY) f.push({ name: "SPY today", w: 8, pull: clamp(E.SPY.chg / 0.015), reading: pct(E.SPY.chg), detail: "full weight at ±1.5%" });
+    if (E.VIXY) f.push({ name: "Fear gauge (VIXY)", w: 15, pull: clamp(-E.VIXY.chg / 0.05), reading: pct(E.VIXY.chg), detail: "rising fear counts against" });
+  }
+  if (B && E) {
+    const devs = [];
+    for (const sym of ["QQQ", "SPY"]) {
+      const bars = B[sym]; const p = E[sym]?.price;
+      if (bars && bars.length >= 40 && isFinite(p)) {
+        const last = bars.slice(-63); const avg = last.reduce((a, b) => a + b.c, 0) / last.length;
+        devs.push({ sym, d: p / avg - 1 });
+      }
+    }
+    if (devs.length) f.push({ name: "3-month trend", w: 20, pull: devs.reduce((a, x) => a + clamp(x.d / 0.05), 0) / devs.length,
+      reading: devs.map(x => `${x.sym} ${pct(x.d)}`).join(", "), detail: "vs. 3-month average price" });
+  }
+  let raw = f.reduce((a, x) => a + x.w * x.pull, 0);
+  const maxW = f.reduce((a, x) => a + x.w, 0);
+  if (maxW && maxW < 100) raw = raw * 100 / maxW; // rescale if a section is missing
+
+  // Volume: confirms the move (amplifies) or questions it (dampens).
+  let volNote = null, factor = 1;
+  if (B && E && B.QQQ && E.QQQ) {
+    const hist = B.QQQ.slice(-21, -1); const sf = sessionFraction();
+    if (hist.length >= 10 && isFinite(E.QQQ.vol)) {
+      const avg = hist.reduce((a, b) => a + b.v, 0) / hist.length;
+      const ratio = E.QQQ.vol / (avg * sf.f);
+      factor = 1 + 0.3 * clamp(ratio - 1, -0.5, 1);
+      volNote = { ratio, factor };
+    }
+  }
+  const score = Math.round(clamp(raw * factor, -100, 100));
+  return { f, score, volNote, haveAny: f.length > 0 };
+}
+
+function verdict(s) {
+  if (s >= 60) return ["A", "Strong up day. Broad buying, TQQQ conditions.", "up"];
+  if (s >= 25) return ["B", "Leaning up. Most leaders agree.", "up"];
+  if (s > -25) return ["C", "Mixed. No clear side, chop risk is high.", "flat"];
+  if (s > -60) return ["D", "Leaning down. Selling is spreading.", "down"];
+  return ["F", "Strong down day. Broad selling, SQQQ conditions.", "down"];
+}
+
+function colorFor(v) { return v > 0 ? "var(--up)" : v < 0 ? "var(--down)" : "var(--flat)"; }
+function softFor(v) { return v > 0 ? "var(--up-soft)" : v < 0 ? "var(--down-soft)" : "var(--bg)"; }
+
+function render() {
+  const r = compute();
+  if (r.haveAny) {
+    const [g, text, side] = verdict(r.score);
+    $("score").textContent = (r.score > 0 ? "+" : "") + r.score;
+    $("score").style.color = side === "flat" ? "var(--ink)" : colorFor(r.score);
+    $("grade").textContent = "GRADE " + g;
+    $("grade").style.background = softFor(side === "flat" ? 0 : r.score);
+    $("grade").style.color = side === "flat" ? "var(--ink)" : colorFor(r.score);
+    $("lean").textContent = text;
+    $("mark").style.left = (50 + r.score / 2) + "%";
+  }
+  const tb = $("factors"); tb.textContent = "";
+  for (const x of r.f) {
+    const tr = document.createElement("tr");
+    const pts = x.w * x.pull;
+    const w = Math.abs(x.pull) * 50;
+    tr.innerHTML = `<td><div></div><div class="detail"></div></td><td class="hide-sm num" style="text-align:left"></td>
+      <td><div class="bar"><span></span></div></td><td class="num"></td>`;
+    tr.children[0].children[0].textContent = x.name;
+    tr.children[0].children[1].textContent = `${x.detail} · max ${x.w}`;
+    tr.children[1].textContent = x.reading;
+    const sp = tr.querySelector(".bar span");
+    sp.style.background = colorFor(pts); sp.style.width = w + "%";
+    sp.style.left = pts >= 0 ? "50%" : (50 - w) + "%";
+    tr.children[3].textContent = (pts >= 0 ? "+" : "") + pts.toFixed(1);
+    tr.children[3].style.color = colorFor(pts);
+    tb.appendChild(tr);
+  }
+  if (r.volNote) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><div>Volume (QQQ)</div><div class="detail">heavy volume strengthens the score, light volume weakens it</div></td><td class="hide-sm num" style="text-align:left"></td><td></td><td class="num"></td>`;
+    tr.children[1].textContent = r.volNote.ratio.toFixed(2) + "× normal";
+    tr.children[3].textContent = "×" + r.volNote.factor.toFixed(2);
+    tb.appendChild(tr);
+  }
+  if (!r.f.length) tb.innerHTML = `<tr><td colspan="4" class="detail">Factors appear here once Webull answers.</td></tr>`;
+  drawGrid("techGrid", "techTitle", "Tech leaders", tech);
+  drawGrid("sectGrid", "sectTitle", "Sector leaders", sect);
+}
+
+function drawGrid(id, titleId, label, list) {
+  const el = $(id); el.textContent = "";
+  const S = state.stocks || {};
+  for (const sym of list) {
+    const q = S[sym]; const v = q ? q.chg : NaN;
+    const d = document.createElement("div"); d.className = "tile";
+    const strong = isFinite(v) && Math.abs(v) >= 0.02;
+    d.style.background = isFinite(v) ? (strong ? colorFor(v) : softFor(v)) : "var(--bg)";
+    d.style.color = strong ? "var(--panel)" : "var(--ink)";
+    const b = document.createElement("b"); b.textContent = sym;
+    const s = document.createElement("span"); s.textContent = isFinite(v) ? pct(v) : "no quote";
+    d.append(b, s); el.appendChild(d);
+  }
+  const b = breadth(list, S);
+  $(titleId).textContent = b ? `${label} · ${b.dn2} down 2%+ · ${b.up2} up 2%+` : label;
+}
+
+function showError(section, e) {
+  state.err[section] = e;
+  const codes = Object.values(state.err).filter(Boolean).map(x => x.code);
+  const el = $("msg");
+  if (!codes.length) { el.hidden = true; return; }
+  const c = codes[0];
+  const text = {
+    needs_reauth: "Your Webull connection has expired. Reconnect Webull in claude.ai Settings → Connectors, then reload this page.",
+    server_not_connected: "Webull isn't connected for your account. Add it in claude.ai Settings → Connectors, then reload.",
+    not_in_manifest: "Webull access was turned off for this page. Allow it from the page's Permissions menu.",
+    approval_required: "This page needs your OK to read Webull quotes. Reload and choose Allow.",
+    blocked_by_policy: "Your organization's settings block these Webull tools.",
+    selection_required: "You have more than one Webull connection. Pick one when claude.ai asks, then reload.",
+  }[c] || `Webull didn't answer (${c}). The page will try again on the next refresh.`;
+  el.textContent = text; el.hidden = false;
+  if (["needs_reauth","server_not_connected","not_in_manifest","blocked_by_policy","approval_required"].includes(c)) {
+    if (section === "stocks") state.stocks = null;
+    if (section === "etfs") state.etfs = null;
+    if (section === "bars") state.bars = null;
+    render();
+  }
+}
+
+function stamp(result) {
+  const t = result?.cache?.storedAt ? new Date(result.cache.storedAt) : new Date();
+  const sf = sessionFraction();
+  $("status").textContent = `${sf.open ? "Market open" : "Market closed, showing last session"} · updated ${t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+function watchAll() {
+  unsubs.forEach(u => u()); unsubs = [];
+  const opts = { refetchInterval: 60000, cache: { staleTime: 30000, gcTime: 300000 } };
+  const stocks = [...new Set([...tech, ...sect])].join(",");
+  unsubs.push(mcp.watchTool(SERVER, "get_stock_snapshot",
+    { symbols: stocks, category: "US_STOCK", extend_hour_required: false, overnight_required: false },
+    ev => { if (ev.type === "data") { state.stocks = snapMap(ev.result.payload); state.err.stocks = null; showError("stocks"); stamp(ev.result); render(); } else showError("stocks", ev.error); }, opts));
+  unsubs.push(mcp.watchTool(SERVER, "get_stock_snapshot",
+    { symbols: "QQQ,SPY,VIXY", category: "US_ETF", extend_hour_required: false, overnight_required: false },
+    ev => { if (ev.type === "data") { state.etfs = snapMap(ev.result.payload); state.err.etfs = null; showError("etfs"); stamp(ev.result); render(); } else showError("etfs", ev.error); }, opts));
+  unsubs.push(mcp.watchTool(SERVER, "get_stock_bars",
+    { symbols: ["QQQ", "SPY"], category: "US_ETF", timespan: "D", count: 70 },
+    ev => { if (ev.type === "data") { state.bars = barMap(ev.result.payload); state.err.bars = null; showError("bars"); render(); } else showError("bars", ev.error); },
+    { refetchInterval: 600000, cache: { staleTime: 300000, gcTime: 3600000 } }));
+}
+
+$("saveLists").addEventListener("click", () => {
+  tech = parseList($("techList").value); sect = parseList($("sectList").value);
+  saveList("mp-tech", tech.join(",")); saveList("mp-sect", sect.join(","));
+  $("techList").value = tech.join(", "); $("sectList").value = sect.join(", ");
+  $("saveNote").textContent = " Saved. Refreshing quotes…";
+  state.stocks = null; render();
+  if (mcp) watchAll();
+});
+
+render();
+(async () => {
+  try { mcp = await window.claude?.use?.("mcp"); } catch { mcp = null; }
+  if (!mcp) { $("status").textContent = "Live data unavailable here"; $("msg").textContent = "Open this page on claude.ai, signed in with Webull connected, to see live scores."; $("msg").hidden = false; return; }
+  watchAll();
+})();
+</script>
