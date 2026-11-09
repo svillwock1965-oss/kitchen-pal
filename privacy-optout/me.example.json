@@ -1,0 +1,11 @@
+{
+  "full_name": "Jane Q. Public",
+  "other_names": ["Jane Public", "Jane Smith"],
+  "email": "you@example.com",
+  "phone": "555-555-5555",
+  "current_address": "123 Main St, Springfield, IL 62701",
+  "past_addresses": ["456 Oak Ave, Peoria, IL 61602"],
+  "birth_year": "1965",
+  "state": "IL",
+  "smtp": {"host": "smtp.gmail.com", "port": 587, "user": "you@gmail.com", "app_password": ""}
+}
